@@ -398,6 +398,28 @@ rather than by inflating a blanket wait — see Section 8 for the details.
   is that Admin-only self-service pages like Attendance Punch In/Out work
   for it directly, the same as any other employee. Don't assume "Admin" means
   "no employee record attached" on this particular target.
+- **That same shared Admin attendance record can be left "Punched In" at a
+  Date genuinely in the future**, left behind by another user/run of this
+  same public instance — confirmed live via `GET /api/v2/attendance/records/latest`
+  returning a real `punchIn.userDate` several days ahead of the actual
+  current date. The Punch Out form always defaults its own Date/Time to
+  "right now," which the real API then rejects outright with
+  `400 "Punch out Time Should Be Later Than Punch in Time"` — a permanent
+  block, not a timing race, since "now" can never be later than a
+  still-future Punch In. `AttendancePage.punchOut()` reads that record via
+  the same read-only API call first (parsing the page's own "Punched in
+  time" display isn't reliable — that display's own template has day/month
+  swapped, the same class of quirk already documented for the Leave date
+  field) and, only if needed, advances the Date field to one day past it.
+  Oddly, the page's own inline validation message — raised once, against the
+  original, since-invalid "now" default — stays visibly stuck on screen even
+  after the correction goes through and the actual save succeeds; it's a
+  stale leftover, the same "doesn't clear itself" quirk already documented
+  for the Employee Id collision message, not a sign the fix didn't work.
+  Also worth noting: this Date field's own placeholder is "yyyy-dd-mm" — a
+  different day/month order than Leave's own From/To Date field
+  ("yyyy-mm-dd") — confirmed live, not assumed to match just because both
+  are "a date field in the same app."
 - **Password strength is judged by pattern, not a character-class checklist.**
   A password built from a fixed template (e.g. ending in a literal `"123"`)
   gets scored "Very Weak" and silently blocks submission even though it has
