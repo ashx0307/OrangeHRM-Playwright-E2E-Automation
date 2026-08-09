@@ -1,0 +1,33 @@
+{
+  "name": "playwright_ts_automation",
+  "version": "1.0.0",
+  "description": "OrangeHRM E2E automation framework built with Playwright + TypeScript, covering Admin-focused HRM business workflows using POM, custom fixtures, and data-driven testing.",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test --project=setup-admin --project=chromium",
+    "test:headed": "playwright test --project=setup-admin --project=chromium --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:cross-browser": "playwright test",
+    "test:shard1": "playwright test --project=setup-admin --project=chromium --shard=1/2",
+    "test:shard2": "playwright test --project=setup-admin --project=chromium --shard=2/2",
+    "test:report": "playwright show-report",
+    "codegen": "playwright codegen https://opensource-demo.orangehrmlive.com/web/index.php/auth/login"
+  },
+  "keywords": [
+    "playwright",
+    "typescript",
+    "orangehrm",
+    "e2e",
+    "pom",
+    "test-automation"
+  ],
+  "type": "commonjs",
+  "devDependencies": {
+    "@faker-js/faker": "^10.5.0",
+    "@playwright/test": "^1.62.0",
+    "@types/node": "^26.1.2",
+    "dotenv": "^17.4.2",
+    "typescript": "^5.9.3"
+  }
+}
