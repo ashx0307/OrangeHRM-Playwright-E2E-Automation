@@ -50,9 +50,9 @@ Authenticate → Onboard the employee → Maintain their record → Offboard
 (Workflow 1)   (Workflow 1, 2, 3, 15)   (Workflow 5, 10, 11,   (Workflow 4)
                                           12, 14)
 
-  Leave (5), Recruitment (6–7), Job Titles (8), Attendance (9) and
-  Directory (13) round out the platform-administration and reference
-                    data the lifecycle above depends on
+  Leave (5), Recruitment Vacancies & Pipeline (6–7), Job Titles (8),
+  Attendance (9) and Directory (13) round out the platform-administration
+                and reference data the lifecycle above depends on
 ```
 
 Every workflow is a spec file with a clear "why this, not something else"
@@ -72,10 +72,11 @@ rationale — see [Section 5](#5-the-16-workflows) for the full breakdown.
 | **Sharding**                                       | `npm run test:shard1` / `test:shard2` split the suite across two `--shard` invocations — see [Section 7](#7-running-the-suite).                                                                                                                                        |
 | **Checkboxes & radio buttons** (`.check()`, `isChecked()`) | Workflow 1/Onboarding's Gender radios — see [`PersonalDetailsPage.setGender()`](src/pages/pim/PersonalDetailsPage.ts). `RecruitmentPage` has the same label-click handling built for a consent checkbox, but no current spec drives it — see the design note in Section 8. |
 | **File upload** (`.setInputFiles()`)               | Workflow 1/Onboarding's profile-photo upload and Workflow 12's document upload, against sample files in [`test-assets/`](test-assets/).                                                                                                                                |
-| **New tab / window** (`context.waitForEvent('page')`) | Workflow 7's "Web Page" link, which opens OrangeHRM's public job listing in a new tab — see [`VacancyPage.openPublicJobListingInNewTab()`](src/pages/recruitment/VacancyPage.ts).                                                                                      |
+| **New tab / window** (`context.waitForEvent('page')`) | Workflow 7's own use of the "Web Page" link, which opens OrangeHRM's public job listing in a new tab — see [`VacancyPage.openPublicJobListingInNewTab()`](src/pages/recruitment/VacancyPage.ts). That new tab is then driven by its own page object, [`PublicJobListingPage`](src/pages/recruitment/PublicJobListingPage.ts), to submit a real job application — see Section 8. |
 | **Network mocking** (`page.route()`)               | A Workflow 3 test stubs the System Users list's own API call with a fulfilled 500 to verify the UI degrades gracefully (empty state + error toast) — UI-only, no real API assertions.                                                                                 |
 | **Explicit hooks** (`test.beforeEach()`)           | Workflow 2's Include-filter cases share one `beforeEach` that opens the Employee List, instead of repeating that call inside every data-driven case.                                                                                                                   |
 | **Custom autocomplete-binding handling**           | Workflow 15/Claim's Employee Name field binds to "First Middle Last" — a different binding shape from every other Employee Name autocomplete in the app ("First Last" only) — handled by `ClaimPage`'s own `selectEmployee()` rather than the shared helper. See Section 8. |
+| **Cross-screen verification of a stateful action** | Workflow 9's punch cycle is confirmed independently from Time > Reports > Attendance Summary (`AttendanceSummaryReportPage`), not just from the punch action's own toast — see Section 8 for why that comparison is a "not decreased" check rather than an exact value. |
 
 ## 4. Project structure
 
@@ -93,8 +94,8 @@ playwright_ts_automation/
 │   │   ├── pim/{AddEmployeePage,EmployeeListPage,PersonalDetailsPage,
 │   │   │        ContactDetailsPage,JobDetailsPage,EmergencyContactsPage}.ts
 │   │   ├── leave/{AssignLeavePage,LeaveListPage,EntitlementsPage}.ts
-│   │   ├── time/AttendancePage.ts
-│   │   ├── recruitment/{RecruitmentPage,VacancyPage}.ts
+│   │   ├── time/{AttendancePage,AttendanceSummaryReportPage}.ts
+│   │   ├── recruitment/{RecruitmentPage,VacancyPage,PublicJobListingPage}.ts
 │   │   └── claim/ClaimPage.ts
 │   ├── fixtures/index.ts         # all custom fixtures (adminPage + page objects)
 │   ├── data/                     # data-driven test tables
@@ -111,8 +112,8 @@ playwright_ts_automation/
 │   ├── 03-admin-user-management/                  # Workflow 3
 │   ├── 04-pim-employee-lifecycle/                 # Workflow 4 — Offboarding
 │   ├── 05-leave-management/                       # Workflow 5 — Assign Leave
-│   ├── 06-recruitment/                            # Workflow 6 — Candidate pipeline
-│   ├── 07-recruitment-vacancies/                  # Workflow 7
+│   ├── 06-recruitment-vacancies/                  # Workflow 6 — Vacancy Management
+│   ├── 07-recruitment/                            # Workflow 7 — Candidate pipeline
 │   ├── 08-admin-job-titles/                       # Workflow 8
 │   ├── 09-time-attendance/                        # Workflow 9
 │   ├── 10-employee-transfer-status/                # Workflow 10
@@ -134,10 +135,10 @@ playwright_ts_automation/
 | 03  | **3 — Admin User Management**              | Full CRUD on platform accounts, data-driven across both roles (`Admin`, `ESS`); non-existent-username search; disabling then re-enabling an *existing* account via its own row; a `page.route()`-mocked 500 on the list's API call. |
 | 04  | **4 — PIM Employee Offboarding**           | Deletes an employee record via its confirmation modal and verifies the row is actually gone from the list.                                                                                                       |
 | 05  | **5 — Assign Leave (Admin)**               | Grants a leave entitlement, then Admin books leave directly on an employee's behalf; confirms it finalizes immediately with no approval step (lands as *Scheduled* or *Taken* depending on the submitted date — see Section 8 — but never *Pending Approval*). |
-| 06  | **6 — Recruitment Pipeline**               | Adds a candidate, shortlists them, and removes a candidate from the pipeline entirely — sourcing through the first hiring-pipeline transition.                                                                   |
-| 07  | **7 — Recruitment Vacancy Management**     | Creates a Vacancy (the prerequisite a candidate needs to get an application stage at all) and confirms the "Web Page" link opens the public job listing in a new browser tab.                                    |
+| 06  | **6 — Recruitment Vacancy Management**     | Full Vacancy CRUD (add, list, delete, verify gone) — the reference record every candidate needs an application stage at all, created and deleted independently of the candidate pipeline in Workflow 7.  |
+| 07  | **7 — Recruitment Pipeline**               | Every way a candidate enters and moves through the pipeline: sourced directly by an Admin; arriving through the public "Web Page" job listing (confirming a real Candidate record lands on the Admin side, not just that the link opens); shortlisted — confirming the shortlist's own confirmation-form Save actually finalized, independently cross-checked from the Candidate List's own Status column, the same idiom Workflow 9 uses; and removed from the pipeline entirely. Creates and deletes its own Vacancy for each case that needs one, to avoid a shared, pre-existing Vacancy's own broken Hiring Manager reference (see Section 8). |
 | 08  | **8 — Admin Job Titles Management**        | The reference data every "Job Title" dropdown elsewhere (Add Employee, Add Vacancy) draws from: add, confirm listed, delete.                                                                                     |
-| 09  | **9 — Attendance Punch In/Out (Admin)**    | A stateful, server-side punch cycle performed as Admin (this shared demo's `Admin` login has its own linked employee record) — reads current state first, so it's correct regardless of prior runs.             |
+| 09  | **9 — Attendance Punch In/Out (Admin)**    | A stateful, server-side punch cycle performed as Admin (this shared demo's `Admin` login has its own linked employee record) — reads current state first, so it's correct regardless of prior runs. Independently cross-checked from Time > Reports > Attendance Summary: that report's cumulative total for the same employee is confirmed to not have decreased across the cycle. |
 | 10  | **10 — Employee Transfer & Status Change** | PIM > Job tab: reassigns Job Title/Sub Unit, and converts Employment Status Probation → Permanent — confirmed live to be an employment *type* field, not an Active/Terminated lifecycle state.                   |
 | 11  | **11 — Contact Details & Emergency Contacts** | Updates the address fields on Contact Details and adds an Emergency Contact — two separate PIM routes with their own left-nav entries, not the same widget.                                                   |
 | 12  | **12 — Employee Document Attachments**     | Uploads and deletes a document via the Attachments widget embedded at the bottom of Personal Details (confirmed live: not a separate top-level tab) — a distinct upload surface from the onboarding photo upload. |
@@ -159,8 +160,8 @@ flowchart TD
     S4 --> W3["3 . Admin User Management"]
     S4 --> W4["4 . PIM Offboarding"]
     S4 --> W5["5 . Assign Leave"]
-    S4 --> W6["6 . Recruitment Pipeline"]
-    S4 --> W7["7 . Vacancy Management"]
+    S4 --> W6["6 . Vacancy Management"]
+    S4 --> W7["7 . Recruitment Pipeline"]
     S4 --> W8["8 . Job Titles Management"]
     S4 --> W9["9 . Attendance Punch In/Out"]
     S4 --> W10["10 . Transfer & Status Change"]
@@ -170,9 +171,8 @@ flowchart TD
     S4 --> W14["14 . Advanced Multi-Filter Search"]
     S4 --> W15["15 . Claim Management"]
 
-    W8 -. Vacancy needed for a candidate's application stage .-> W6
-    W9 -. Job Title is reference data Add Employee/Add Vacancy draw from .-> W1b
-    W9 -. .-> W7
+    W8 -. Job Title is reference data Add Employee/Add Vacancy draw from .-> W1b
+    W8 -. .-> W6
 
     style Setup fill:#f5f5f5,stroke:#999
 ```
@@ -277,6 +277,46 @@ rather than by inflating a blanket wait — see Section 8 for the details.
   using "First Last" (to actually find the suggestion) but validates the
   post-click bound value against "First Middle Last" — the shared
   `selectAutocompleteOption()` helper can't be reused as-is for this one field.
+- **Clicking a candidate's "Shortlist" (or "Reject") button doesn't finalize
+  anything by itself.** Confirmed live: it only navigates to its own
+  confirmation form (`changeCandidateVacancyStatus?candidateId=X&selectedAction=N`)
+  showing the Candidate/Vacancy/Hiring Manager/Current Status read-only and
+  an optional Notes field — the candidate's actual status doesn't change
+  until that form's own Save is clicked too. The original version of
+  Workflow 6's shortlist test only clicked the button and stopped there,
+  so it never actually verified the status changed at all; `advanceStage()`
+  now completes the confirmation form, and the spec cross-checks the result
+  from the Candidate List's own Status column afterward — the same
+  "verify from a second screen, not just the action's own toast" idiom
+  `AttendanceSummaryReportPage` uses for Workflow 9.
+- **That confirmation form can fail outright with a generic "Unexpected
+  Error Occurred" if the candidate's Vacancy has a Hiring Manager reference
+  that's since been deleted** — confirmed live, reproducibly, against one of
+  this shared demo's own pre-existing Vacancies (accumulated over who knows
+  how many other runs, several of which now show `(Deleted)` as their
+  Hiring Manager on the Vacancy List itself). This has nothing to do with
+  the candidate or the shortlist action — it's a real, standing data-
+  integrity defect on this specific shared instance. Creating a fresh
+  Vacancy (with a Hiring Manager picked moments earlier, guaranteed still
+  live) before shortlisting sidesteps it entirely, the same "avoid the
+  problem, don't just react to it" idiom already used for Employee Id
+  collisions — and that fresh Vacancy is deleted again once the test is
+  done with it, so this suite's own runs don't add to that same pile.
+- **The public job-application form genuinely requires a Résumé — the
+  Admin-side Add Candidate form does not.** Confirmed live: submitting the
+  public `/recruitmentApply/applyVacancy/id/N` form without a file attached
+  is silently rejected with an inline "Required" error and creates nothing,
+  even though every other field on that form (Contact Number, Keywords,
+  Notes, Consent) is genuinely optional. `PublicJobListingPage.apply()`
+  always attaches one for exactly this reason.
+- **A submitted public application does land as a real Candidate record**
+  — same shape, same "Application Initiated" starting status, as one added
+  directly by an Admin — confirmed live by searching the Admin-side
+  Candidate list by name right after submitting. The Vacancy List page
+  itself has no per-vacancy application count anywhere in its own table
+  (just Vacancy/Job Title/Hiring Manager/Status/Actions, confirmed live) —
+  so despite the feature living on the Vacancy screen, the Candidate list is
+  the only place that actually proves an application went through.
 - **A dropdown's own placeholder is a selectable option.** `"-- Select --"`
   renders as a real `.oxd-select-option`, so "pick the first option" helpers
   must exclude it explicitly — otherwise "pick anything" ends up picking
@@ -420,6 +460,26 @@ rather than by inflating a blanket wait — see Section 8 for the details.
   different day/month order than Leave's own From/To Date field
   ("yyyy-mm-dd") — confirmed live, not assumed to match just because both
   are "a date field in the same app."
+- **A punch cycle's own "Successfully Saved" toast isn't the only signal
+  Workflow 9 checks — it's also confirmed from a completely different
+  screen.** Time > Reports > Attendance Summary
+  (`AttendanceSummaryReportPage`, `/time/displayAttendanceSummaryReportCriteria`)
+  reports each employee's cumulative Punch In/Out duration as one all-history
+  total, and its own on-page heading is literally "Attendance Total Summary
+  Report." Its Employee Name field binds to "First Middle Last" the same way
+  Claim's does — but unlike `ClaimPage`, this page never needs to *validate*
+  the bound value against one specific known name, only select whichever
+  real suggestion a "First Last" search surfaces, so the shared
+  `selectAutocompleteOption()` is reused as-is. The reported total is a
+  **lifetime, shared figure** — confirmed live that a single ~6-second punch
+  cycle was followed by a jump far larger than 6 seconds' worth of hours,
+  consistent with other concurrent users of this same public instance
+  punching the exact same Admin-linked employee record in between the two
+  reads. Because of that, Workflow 9 snapshots the total before its own
+  cycle and asserts the total *after* is not less than that snapshot,
+  rather than asserting it grew by any specific amount — the only thing a
+  live, concurrently-used shared instance can actually promise is that this
+  total never decreases, not by how much any one actor's action moved it.
 - **Password strength is judged by pattern, not a character-class checklist.**
   A password built from a fixed template (e.g. ending in a literal `"123"`)
   gets scored "Very Weak" and silently blocks submission even though it has

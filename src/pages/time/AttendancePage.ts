@@ -5,6 +5,11 @@ import { env } from '../../config/env';
 export class AttendancePage extends BasePage {
   private readonly punchInButton = this.page.getByRole('button', { name: 'In', exact: true });
   private readonly punchOutButton = this.page.getByRole('button', { name: 'Out', exact: true });
+  // The topbar's own "First Last" display name of whoever is currently
+  // logged in — used to look this employee up elsewhere (e.g. the
+  // Attendance Summary Report) without depending on any attendance record
+  // already existing to read an employee off of.
+  private readonly userDropdownName = this.page.locator('.oxd-userdropdown-name');
   // This field's own placeholder is "yyyy-dd-mm" — a different day/month
   // order than Leave's own From/To Date field ("yyyy-mm-dd", see
   // `futureLeaveDate()`). Confirmed live: the two Date widgets in this app
@@ -30,6 +35,18 @@ export class AttendancePage extends BasePage {
    *  employee's current, server-side attendance state. */
   async currentState(): Promise<'IN' | 'OUT'> {
     return (await this.punchOutButton.isVisible()) ? 'IN' : 'OUT';
+  }
+
+  /**
+   * The "First Last" name of whoever is currently punching — read from the
+   * topbar rather than an attendance record's own `employee` field, since a
+   * freshly-reset account would have no punch history yet to read one off
+   * of. This is also the exact search-friendly form the Attendance Summary
+   * Report's own Employee Name autocomplete expects (see
+   * `AttendanceSummaryReportPage`).
+   */
+  async currentEmployeeFullName(): Promise<string> {
+    return (await this.userDropdownName.innerText()).trim();
   }
 
   async punchIn(note?: string) {

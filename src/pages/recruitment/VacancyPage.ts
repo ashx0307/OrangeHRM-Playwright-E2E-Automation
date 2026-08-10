@@ -124,4 +124,15 @@ export class VacancyPage extends BasePage {
   async expectVacancyVisible(name: string) {
     await expect(this.rowByName(name)).toBeVisible();
   }
+
+  async deleteVacancy(name: string) {
+    const row = this.rowByName(name);
+    // The trash-icon class is the only unambiguous way to target delete
+    // specifically — the row's icon buttons share a generic class and their
+    // DOM order isn't reliable enough to pick by position (same pattern as
+    // every other list screen's delete action in this suite).
+    await row.locator('.bi-trash').click();
+    await this.page.getByRole('button', { name: 'Yes, Delete' }).click();
+    await this.expectToast('Successfully Deleted');
+  }
 }

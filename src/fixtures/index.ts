@@ -16,6 +16,7 @@ import { AssignLeavePage } from '../pages/leave/AssignLeavePage';
 import { LeaveListPage } from '../pages/leave/LeaveListPage';
 import { EntitlementsPage } from '../pages/leave/EntitlementsPage';
 import { AttendancePage } from '../pages/time/AttendancePage';
+import { AttendanceSummaryReportPage } from '../pages/time/AttendanceSummaryReportPage';
 import { RecruitmentPage } from '../pages/recruitment/RecruitmentPage';
 import { VacancyPage } from '../pages/recruitment/VacancyPage';
 import { ClaimPage } from '../pages/claim/ClaimPage';
@@ -43,6 +44,7 @@ interface Fixtures {
   recruitmentPage: RecruitmentPage;
   vacancyPage: VacancyPage;
   adminAttendancePage: AttendancePage;
+  attendanceSummaryReportPage: AttendanceSummaryReportPage;
   directoryPage: DirectoryPage;
   claimPage: ClaimPage;
 }
@@ -93,6 +95,7 @@ export const test = base.extend<Fixtures>({
   recruitmentPage: async ({ adminPage }, use) => use(new RecruitmentPage(adminPage)),
   vacancyPage: async ({ adminPage }, use) => use(new VacancyPage(adminPage)),
   adminAttendancePage: async ({ adminPage }, use) => use(new AttendancePage(adminPage)),
+  attendanceSummaryReportPage: async ({ adminPage }, use) => use(new AttendanceSummaryReportPage(adminPage)),
   directoryPage: async ({ adminPage }, use) => use(new DirectoryPage(adminPage)),
   claimPage: async ({ adminPage }, use) => use(new ClaimPage(adminPage)),
 });
